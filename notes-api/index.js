@@ -8,7 +8,7 @@ app.use(express.json());
 mongoose.connect(process.env.MONGODB_URI)
 .then(()=>console.log("Conncted to MongoDB Atlas"))
 .catch((err)=>console.error("had an error connecting",err ));
-
+const AppError=require('./utils/AppError');
 
 app.get('/notes',async(req,res)=>{
 try{
@@ -70,8 +70,33 @@ app.put('/notes/:id',async(req,res)=>{
     }
 });
 
+app.use((req,res,next)=>{
+    next(new AppError(`Cannot find ${req.originalUrl}  on this server`,404));
+});
+
+app.use((err,req,res,next)=>{
+    console.error("Errror",err);
+    const status=err.statusCode||500;
+    const message=err.message||"Something went wrong";
+    res.status(status).json({status: 'error',message});
+});
+
 app.listen(PORT,()=>{
-console.log(`Listening to port ${PORT}`)
+console.log(`Listening to port ${PORT}`);
+});
+
+
+app.get('/notes/:id',async(req,res,next)=>{
+    try{
+        const note=await Note.findById(req.params.id);
+        if(!note){
+            return next(new AppError("Note not found",404));
+        }
+        res.json(note);
+    }
+    catch(err){
+        next(err);
+    }
 });
 
 
